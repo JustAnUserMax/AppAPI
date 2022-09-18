@@ -47,26 +47,57 @@ if not os.path.isdir('./tasks'):
     os.mkdir('./tasks')
 # Выборка задач для отчёта и запись в файл
 for user in users:
+    # Указана ли компания
+    if user.get('company') is None:
+        print(f'У пользователя {user.get("username")} не указана компания.')
+        break
+    # Указан ли email
+    if user.get('email') is None:
+        print(f'У пользователя {user.get("username")} не указана почта.')
+        break
     # Выборка задач для отчёта
     true_todos = ''
     false_todos = ''
     for todo in todos:
         title = todo.get('title')
+        # Проверка на существование завершенных задач
         if todo.get('completed') and title is not None and user.get("id") == todo.get('userId'):
             if len(title) > 48:
                 true_todos += f'\n{title[:48]}...'
             else:
                 true_todos += f'\n{title}'
+        # Проверка на существование оставшихся задач
         elif todo.get('title') is not None and user.get("id") == todo.get('userId'):
             if len(title) > 48:
                 false_todos += f'\n{title[:48]}...'
             else:
                 false_todos += f'\n{title}'
     # Шаблон для записи
-    template = f'Отчёт для {user.get("company").get("name")}.\n{user.get("name")} <{user.get("email")}> ' \
+    template = ''
+    # Если у пользователя нет задач, то код начинает обрабатывать следующего
+    if true_todos is None and false_todos is None:
+        print(f'У пользователя {user.get("username")} нет задач.')
+        break
+    # Если у пользователя нет выполненных задач
+    elif true_todos is None:
+        template = f'Отчёт для {user.get("company").get("name")}.\n{user.get("name")} <{user.get("email")}> ' \
+                   f'{today.strftime("%Y.%m.%d")} {today.strftime("%H:%M")}\nВсего задач: ' \
+                   f'{true_todos_by_user[user.get("id")] + false_todos_by_users[user.get("id")]}\n' \
+                   f'\nУ пользователя нет завершенных задач.\n\nОставшиеся задачи (' \
+                   f'{false_todos_by_users[user.get("id")]}):{false_todos}'
+    # Если у пользователя нет оставшихся задач
+    elif false_todos is None:
+        template = f'Отчёт для {user.get("company").get("name")}.\n{user.get("name")} <{user.get("email")}> ' \
+                   f'{today.strftime("%Y.%m.%d")} {today.strftime("%H:%M")}\nВсего задач: ' \
+                   f'{true_todos_by_user[user.get("id")] + false_todos_by_users[user.get("id")]}\n' \
+                   f'\nЗавершённые задачи ({true_todos_by_user[user.get("id")]}):{true_todos}\n' \
+                   f'\nУ пользователя нет оставшихся задач.'
+    # У пользователя все есть.
+    else:
+        template = f'Отчёт для {user.get("company").get("name")}.\n{user.get("name")} <{user.get("email")}> ' \
                f'{today.strftime("%Y.%m.%d")} {today.strftime("%H:%M")}\nВсего задач: ' \
-               f'{true_todos_by_user[user.get("id")] + false_todos_by_users[user.get("id")]}\n\nЗавершённые задачи (' \
-               f'{true_todos_by_user[user.get("id")]}):{true_todos}\n\nОставшиеся задачи (' \
+               f'{true_todos_by_user[user.get("id")] + false_todos_by_users[user.get("id")]}\n' \
+               f'\nЗавершённые задачи ({true_todos_by_user[user.get("id")]}):{true_todos}\n\nОставшиеся задачи (' \
                f'{false_todos_by_users[user.get("id")]}):{false_todos}'
     # Пути до файлов
     path_to_file = f'./tasks/{user.get("username")}.txt'
@@ -76,7 +107,7 @@ for user in users:
                                    f'T{today.strftime("%H.%M")}.txt'
     # Запись в файл
     if os.path.isfile(path_to_file):
-        # Проверка системы, где работает скрипт
+        # Проверка операционной системы, где работает скрипт
         if platform == "linux" or platform == "linux2":
             # Проверка на то, есть ли старый отчёт (возможно использование скрипта в ту же минуту)
             if os.path.isfile(path_to_old_file_for_linux):
