@@ -64,7 +64,7 @@ for user in users:
         print(f'У пользователя {user.get("username")} не указана почта.')
         break
     # Валидация почты
-    elif re.fullmatch(regex, user.get('email')):
+    elif re.fullmatch(regex, user.get('email')) is False:
         print(f'У пользователя {user.get("username")} неправильно указана почта.')
         break
     # Выборка задач для отчёта
