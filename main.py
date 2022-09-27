@@ -104,9 +104,8 @@ today = datetime.datetime.today()
 
 # Запись файла
 def write_file(path, temp):
-    f = open(path, 'w+')
-    f.write(temp)
-    f.close()
+    with open(path, 'w+') as f:
+        f.write(temp)
 
 
 def write_file_with_template(username, temp):
