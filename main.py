@@ -46,8 +46,8 @@ class Connector:
     # Получение отклика от сайта
     @staticmethod
     def connection(path):
-        if requests.get(path).status_code == 200:
-            response = requests.get(path)
+        response = requests.get(path)
+        if response.status_code == 200:
             return response.json()
         else:
             print('Нет соединения с интернетом или с сайтом')
@@ -89,9 +89,6 @@ class JsonLoaderInClass:
         )
 
 
-# Создание папки tasks
-if not os.path.isdir('./tasks'):
-    os.mkdir('./tasks')
 # Дата отчёта
 today = datetime.datetime.today()
 
@@ -119,7 +116,6 @@ def write_file_with_template(username, temp):
                 f = open(path, 'w+')
                 f.write(temp)
                 f.close()
-            pass
         else:
             # Проверка на то, есть ли старый отчёт (возможно использование скрипта в ту же минуту)
             if os.path.isfile(path_to_old_file_for_windows):
@@ -133,62 +129,68 @@ def write_file_with_template(username, temp):
                 f = open(path, 'w+')
                 f.write(temp)
                 f.close()
-            pass
     else:
         f = open(path, 'w+')
         f.write(temp)
         f.close()
 
 
-# Ссылки для получения json
-todos = 'https://json.medrocket.ru/todos'
-users = 'https://json.medrocket.ru/users'
-# Подключение к сайту и загрузка json
-response_users = Connector.connection(users)
-response_todos = Connector.connection(todos)
-# Словарь для users и todos и списки для хранения данных
-users_match_with_todos = {}
-urs = []
-# Соотнесение пользователя и его задач
-for user in response_users:
-    urs.append(JsonLoaderInClass.loader_to_User(user))
-    td = []
-    for todo in response_todos:
-        if todo.get('userId') == user.get('id'):
-            td.append(JsonLoaderInClass.loader_to_Todo(todo))
-    users_match_with_todos[f'{JsonLoaderInClass.loader_to_User(user).id}'] = td
-# Запись отчётов
-for u in urs:
-    if users_match_with_todos.get(f'{u.id}') is None:
-        print(f'У пользователя {u.username} нет задач.')
-        break
-    # Поиск завершенных и оставшихся задач
-    true_t = ''
-    false_t = ''
-    ti = 0
-    fi = 0
-    for t in users_match_with_todos.get(f'{u.id}'):
-        if t.completed:
-            true_t += f'\n{t.title}'
-            ti += 1
-        else:
-            false_t += f'\n{t.title}'
-            fi += 1
-    # Шаблон для записи
-    template = f'Отчёт для {u.company_name}.\n{u.name} <{u.email}> ' \
-               f'{today.strftime("%Y.%m.%d")} {today.strftime("%H:%M")}\nВсего задач: ' \
-               f'{ti + fi}\n\n' \
-               f'Завершённые задачи ({ti}):{true_t}\n\nОставшиеся задачи (' \
-               f'{fi}):{false_t}'
-    if true_t is None:
+def main():
+    # Создание папки tasks
+    os.makedirs('./tasks', exist_ok=True)
+    # Ссылки для получения json
+    todos = 'https://json.medrocket.ru/todos'
+    users = 'https://json.medrocket.ru/users'
+    # Подключение к сайту и загрузка json
+    response_users = Connector.connection(users)
+    response_todos = Connector.connection(todos)
+    # Словарь для users и todos и списки для хранения данных
+    users_match_with_todos = {}
+    class_of_users = []
+    # Соотнесение пользователя и его задач
+    for user in response_users:
+        class_of_users.append(JsonLoaderInClass.loader_to_User(user))
+        todos_of_the_one_user = []
+        for todo in response_todos:
+            if todo.get('userId') == user.get('id'):
+                todos_of_the_one_user.append(JsonLoaderInClass.loader_to_Todo(todo))
+        users_match_with_todos[f'{JsonLoaderInClass.loader_to_User(user).id}'] = todos_of_the_one_user
+    # Запись отчётов
+    for u in class_of_users:
+        if users_match_with_todos.get(f'{u.id}') is None:
+            print(f'У пользователя {u.username} нет задач.')
+            break
+        # Поиск завершенных и оставшихся задач
+        true_todo_in_main = ''
+        false_todo_in_main = ''
+        num_of_true_todos = 0
+        num_of_false_todos = 0
+        for t in users_match_with_todos.get(f'{u.id}'):
+            if t.completed:
+                true_todo_in_main += f'\n{t.title}'
+                num_of_true_todos += 1
+            else:
+                false_todo_in_main += f'\n{t.title}'
+                num_of_false_todos += 1
+        # Шаблон для записи
         template = f'Отчёт для {u.company_name}.\n{u.name} <{u.email}> ' \
                    f'{today.strftime("%Y.%m.%d")} {today.strftime("%H:%M")}\nВсего задач: ' \
-                   f'{fi}\n\n' \
-                   f'Завершённых задач нет.\n\nОставшиеся задачи (' \
-                   f'{fi}):{false_t}'
-    if false_t is None:
-        template = f'Отчёт для {u.company_name}.\n{u.name} <{u.email}> ' \
-                   f'{today.strftime("%Y.%m.%d")} {today.strftime("%H:%M")}\nВсего задач: ' \
-                   f'{ti}\n\n' \
-                   f'Завершённые задачи ({ti}):{true_t}\n\nОставшихся задач нет.'
-    write_file_with_template(u.username, template)
+                   f'{num_of_true_todos + num_of_false_todos}\n\n' \
+                   f'Завершённые задачи ({num_of_true_todos}):{true_todo_in_main}\n\nОставшиеся задачи (' \
+                   f'{num_of_false_todos}):{false_todo_in_main}'
+        if true_todo_in_main == '':
+            template = f'Отчёт для {u.company_name}.\n{u.name} <{u.email}> ' \
+                       f'{today.strftime("%Y.%m.%d")} {today.strftime("%H:%M")}\nВсего задач: ' \
+                       f'{num_of_false_todos}\n\n' \
+                       f'Завершённых задач нет.\n\nОставшиеся задачи (' \
+                       f'{num_of_false_todos}):{false_todo_in_main}'
+        if false_todo_in_main == '':
+            template = f'Отчёт для {u.company_name}.\n{u.name} <{u.email}> ' \
+                       f'{today.strftime("%Y.%m.%d")} {today.strftime("%H:%M")}\nВсего задач: ' \
+                       f'{num_of_true_todos}\n\n' \
+                       f'Завершённые задачи ({num_of_true_todos}):{true_todo_in_main}\n\nОставшихся задач нет.'
+        write_file_with_template(u.username, template)
+
+
+if __name__ == '__main__':
+    main()
